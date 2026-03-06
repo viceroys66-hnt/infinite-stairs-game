@@ -15,12 +15,14 @@
     <div class="game-area">
       <canvas id="gameCanvas" width="393" height="852"></canvas>
       <div id="touchOverlay" class="touch-overlay" aria-hidden="true"></div>
+      <div class="game-overlay-buttons">
+        <button type="button" id="btnStart" class="btn btn-start">게임 시작하기</button>
+        <button type="button" id="btnRestart" class="btn btn-restart">다시 시작하기</button>
+      </div>
     </div>
     <div class="buttons">
-      <button type="button" id="btnStart" class="btn btn-start">게임 시작하기</button>
       <button type="button" id="btnTurn" class="btn btn-turn">방향 전환</button>
       <button type="button" id="btnClimb" class="btn btn-climb">오르기</button>
-      <button type="button" id="btnRestart" class="btn btn-restart">다시 시작하기</button>
     </div>
     <p class="hint">왼쪽 화면=방향 전환 · 오른쪽 화면=오르기 (모바일 터치 지원)</p>
   </div>
