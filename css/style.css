@@ -82,6 +82,23 @@ body {
   pointer-events: auto;
 }
 
+.game-bottom-buttons {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 8px 14px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.game-bottom-buttons .btn {
+  pointer-events: auto;
+}
+
 @media (max-width: 600px), (hover: none) {
   .touch-overlay {
     display: block;
@@ -98,17 +115,10 @@ body {
   #gameCanvas {
     border-radius: 10px;
   }
-  .buttons { gap: 12px; margin-top: 12px; }
+  .game-bottom-buttons { gap: 10px; padding: 10px 6px 12px; }
   .btn { padding: 12px 22px; font-size: 1rem; }
   .game-overlay-buttons .btn { padding: 14px 26px; font-size: 1.05rem; }
   .hint { font-size: 0.75rem; margin-top: 8px; }
-}
-
-.buttons {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
 }
 
 .btn {
