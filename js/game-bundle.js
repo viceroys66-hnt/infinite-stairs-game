@@ -881,10 +881,12 @@
     if (!canvas) return;
     var container = canvas.parentElement;
     var cw = (container && container.clientWidth > 0) ? container.clientWidth : (window.visualViewport ? window.visualViewport.width : window.innerWidth);
+    var ch = (container && container.clientHeight > 0) ? container.clientHeight : (window.visualViewport ? window.visualViewport.height : window.innerHeight);
     if (cw <= 0) cw = document.documentElement.clientWidth || window.innerWidth || DESIGN_WIDTH;
-    var scale = cw / DESIGN_WIDTH;
-    var w = Math.max(280, Math.round(DESIGN_WIDTH * scale));
-    var h = Math.max(480, Math.round(DESIGN_HEIGHT * scale));
+    if (ch <= 0) ch = window.innerHeight || DESIGN_HEIGHT;
+    var scale = Math.min(cw / DESIGN_WIDTH, ch / DESIGN_HEIGHT);
+    var w = Math.max(200, Math.round(DESIGN_WIDTH * scale));
+    var h = Math.max(400, Math.round(DESIGN_HEIGHT * scale));
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
