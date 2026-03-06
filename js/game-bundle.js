@@ -35,6 +35,7 @@
   var jumpStartY = 0;
   var fallY = 0;
   var fallVelY = 0;
+  var fallRotation = 0;
   var GAMEOVER_MESSAGE = '이런~ 젠장';
   var canvas, ctx;
   var quokkaImg = new Image();
@@ -43,6 +44,8 @@
   stumpImg.src = 'assets/stump.png';
   var stairImg = new Image();
   stairImg.src = 'assets/stair.png';
+  var birdImg = new Image();
+  birdImg.src = 'assets/bird.png';
 
   function getHighScore() {
     try {
@@ -193,6 +196,7 @@
     state = 'GAMEOVER';
     fallY = quokkaY;
     fallVelY = 0;
+    fallRotation = 0;
     saveHighScore();
     updateButtonVisibility();
   }
@@ -211,40 +215,54 @@
 
     var t = animTime * 0.4;
 
-    // 먼 구름 (작고 흐릿하게)
-    for (var i = 0; i < 4; i++) {
-      var fx = ((i * 120 + t * 6) % (CANVAS_WIDTH + 160)) - 80;
-      var fy = 80 + (i % 2) * 90 + Math.sin(t + i * 0.8) * 12;
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.beginPath();
-      ctx.ellipse(fx, fy, 50, 18, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(fx + 30, fy - 6, 38, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
+    function drawPuffyCloud(centerX, centerY, scale, opacity, isFar) {
+      var blobs = isFar
+        ? [[0, 0, 1, 0.5], [0.5, -0.15, 0.7, 0.4], [0.25, 0.2, 0.55, 0.35], [-0.2, 0.1, 0.45, 0.38]]
+        : [[0, 0, 1, 0.55], [0.55, -0.2, 0.75, 0.45], [0.3, 0.25, 0.6, 0.4], [-0.25, 0.05, 0.5, 0.42], [0.15, 0.35, 0.45, 0.35]];
+      var b, bx, by, rw, rh, grad;
+      if (isFar) {
+        for (b = 0; b < blobs.length; b++) {
+          bx = centerX + blobs[b][0] * scale * 55;
+          by = centerY + blobs[b][1] * scale * 45;
+          rw = blobs[b][2] * scale * 48;
+          rh = blobs[b][3] * scale * 28;
+          ctx.fillStyle = 'rgba(255,255,255,' + (opacity * 0.5) + ')';
+          ctx.beginPath();
+          ctx.ellipse(bx, by, rw, rh, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        return;
+      }
+      for (b = 0; b < blobs.length; b++) {
+        bx = centerX + blobs[b][0] * scale * 55;
+        by = centerY + blobs[b][1] * scale * 45;
+        rw = blobs[b][2] * scale * 48;
+        rh = blobs[b][3] * scale * 28;
+        grad = ctx.createRadialGradient(bx - rw * 0.4, by - rh * 0.45, 0, bx + rw * 0.25, by + rh * 0.3, rw * 1.2);
+        grad.addColorStop(0, 'rgba(255,255,255,' + (opacity * 0.98) + ')');
+        grad.addColorStop(0.35, 'rgba(255,255,255,' + (opacity * 0.9) + ')');
+        grad.addColorStop(0.6, 'rgba(248,252,255,' + (opacity * 0.78) + ')');
+        grad.addColorStop(0.82, 'rgba(235,248,255,' + (opacity * 0.58) + ')');
+        grad.addColorStop(1, 'rgba(218,238,250,' + (opacity * 0.38) + ')');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(bx, by, rw, rh, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
-    // 가까운 구름 (더 뚜렷하고 입체감)
-    for (var j = 0; j < 5; j++) {
-      var cx = ((j * 97 + t * 10) % (CANVAS_WIDTH + 140)) - 70;
-      var cy = 140 + (j % 3) * 85 + Math.sin(t * 1.2 + j) * 18;
-      var cloudG = ctx.createRadialGradient(cx - 8, cy - 5, 0, cx, cy, 48);
-      cloudG.addColorStop(0, 'rgba(255,255,255,0.92)');
-      cloudG.addColorStop(0.5, 'rgba(255,255,255,0.82)');
-      cloudG.addColorStop(1, 'rgba(255,255,255,0.5)');
-      ctx.fillStyle = cloudG;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 42, 16, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx + 28, cy - 5, 32, 13, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx + 12, cy + 8, 28, 11, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx - 10, cy + 4, 22, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
+    // 먼 구름 (뭉게뭉게, 흐릿한 레이어)
+    for (var i = 0; i < 5; i++) {
+      var fx = ((i * 115 + t * 5) % (CANVAS_WIDTH + 200)) - 100;
+      var fy = 60 + (i % 3) * 95 + Math.sin(t + i * 0.7) * 15;
+      drawPuffyCloud(fx, fy, 0.85 + (i % 3) * 0.15, 0.48, true);
+    }
+
+    // 가까운 구름 (뭉게뭉게 + 3D 그라데이션)
+    for (var j = 0; j < 6; j++) {
+      var cx = ((j * 88 + t * 9) % (CANVAS_WIDTH + 160)) - 80;
+      var cy = 130 + (j % 3) * 90 + Math.sin(t * 1.1 + j * 1.3) * 20;
+      drawPuffyCloud(cx, cy, 1 + (j % 2) * 0.2, 0.9, false);
     }
 
     // 하늘만 (올라가는 느낌 – 바닥/땅 없음)
@@ -255,41 +273,57 @@
     ctx.fillStyle = horizonG;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // 참새 (날아다니는 작은 새)
+    // 참새 (날개짓하며 날아다니는 작은 새)
     for (var bird = 0; bird < 3; bird++) {
       var btx = ((bird * 180 + t * 45) % (CANVAS_WIDTH + 100)) - 50;
       var bty = 100 + (bird % 3) * 120 + Math.sin(t * 2 + bird) * 25;
-      var wingPhase = Math.sin(t * 8 + bird * 3) * 0.5;
+      var wingPhase = Math.sin(t * 14 + bird * 2.1);
+      var wingY = wingPhase * 9;
       ctx.save();
       ctx.translate(btx, bty);
-      ctx.fillStyle = '#5c4033';
-      ctx.strokeStyle = '#3d2b1f';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#8b6914';
-      ctx.beginPath();
-      ctx.moveTo(8, 0);
-      ctx.lineTo(14, -2);
-      ctx.lineTo(14, 2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(92,64,51,0.8)';
-      ctx.beginPath();
-      ctx.moveTo(-6, 0);
-      ctx.lineTo(-12, -4 + wingPhase * 6);
-      ctx.lineTo(-8, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-6, 0);
-      ctx.lineTo(-12, 4 - wingPhase * 6);
-      ctx.lineTo(-8, 0);
-      ctx.closePath();
-      ctx.fill();
+      if (birdImg.complete && birdImg.naturalWidth > 0) {
+        var flapScale = 1 + 0.14 * wingPhase;
+        var bw = 28;
+        var bh = 18;
+        ctx.scale(1, flapScale);
+        ctx.drawImage(birdImg, -bw / 2, -bh / 2, bw, bh);
+      } else {
+        var bodyG = ctx.createRadialGradient(-2, -1, 0, 0, 0, 12);
+        bodyG.addColorStop(0, '#8b7355');
+        bodyG.addColorStop(0.6, '#6b5344');
+        bodyG.addColorStop(1, '#4a3c32');
+        ctx.fillStyle = bodyG;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#2c2c2c';
+        ctx.beginPath();
+        ctx.ellipse(6, 0, 2.5, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c45c38';
+        ctx.beginPath();
+        ctx.moveTo(9, 0);
+        ctx.lineTo(15, -1.5);
+        ctx.lineTo(15, 1.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(90,70,55,0.9)';
+        ctx.beginPath();
+        ctx.moveTo(-5, 0);
+        ctx.lineTo(-15, -4 - wingY);
+        ctx.lineTo(-7, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-5, 0);
+        ctx.lineTo(-15, 4 + wingY);
+        ctx.lineTo(-7, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -337,7 +371,8 @@
   }
 
   function drawGround() {
-    var groundStartY = GROUND_TOP + floor * STEP_Y;
+    var stumpHalfH = (STAIR_HEIGHT + STAIR_DEPTH) * 1.3 / 2;
+    var groundStartY = floor === 0 ? STAIR0_Y + stumpHalfH : GROUND_TOP + floor * STEP_Y;
     if (groundStartY >= CANVAS_HEIGHT + 20) return;
     var gTop = groundStartY;
     var stumpCx = getStairX(getStairPosition(0)) + STAIR_WIDTH / 2;
@@ -375,6 +410,42 @@
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
+
+    function drawTree(tx, baseY, scale) {
+      var trunkH = 42 * scale;
+      var trunkW = 8 * scale;
+      var foliageR = 28 * scale;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.2)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = '#5c4033';
+      ctx.fillRect(tx - trunkW / 2, baseY - trunkH, trunkW, trunkH);
+      var foliageG = ctx.createRadialGradient(tx - foliageR * 0.3, baseY - trunkH - foliageR * 0.4, 0, tx, baseY - trunkH, foliageR);
+      foliageG.addColorStop(0, '#6b9e5c');
+      foliageG.addColorStop(0.5, '#4a7c3d');
+      foliageG.addColorStop(1, '#3d6b32');
+      ctx.fillStyle = foliageG;
+      ctx.beginPath();
+      ctx.ellipse(tx, baseY - trunkH - foliageR * 0.3, foliageR, foliageR * 1.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(tx - foliageR * 0.4, baseY - trunkH - foliageR * 0.6, foliageR * 0.7, foliageR * 0.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(tx + foliageR * 0.35, baseY - trunkH - foliageR * 0.5, foliageR * 0.75, foliageR * 0.9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+    var treeBaseY = gTop + 8 + Math.floor(animTime * 0.5) % 4;
+    drawTree(28, treeBaseY, 1);
+    drawTree(62, treeBaseY + 12, 0.85);
+    drawTree(95, treeBaseY - 5, 1.1);
+    drawTree(CANVAS_WIDTH - 28, treeBaseY + 5, 0.9);
+    drawTree(CANVAS_WIDTH - 65, treeBaseY - 8, 1.05);
+    drawTree(CANVAS_WIDTH - 98, treeBaseY + 8, 0.8);
   }
 
   var STUMP_SCALE = 1.3;
@@ -596,10 +667,16 @@
       }
     }
     var centerY = drawY + h / 2;
-    var flipCenterX = (jumpProgress > 0 && state !== 'GAMEOVER') ? (drawX + w / 2) : quokkaX;
+    var centerX = drawX + w / 2;
+    var flipCenterX = (jumpProgress > 0 && state !== 'GAMEOVER') ? centerX : quokkaX;
 
     ctx.save();
-    if (state === 'READY' || direction === -1) {
+    if (state === 'GAMEOVER') {
+      ctx.translate(centerX, centerY);
+      ctx.rotate(fallRotation);
+      ctx.translate(-centerX, -centerY);
+    }
+    if (state !== 'GAMEOVER' && (state === 'READY' || direction === -1)) {
       ctx.translate(flipCenterX, centerY);
       ctx.scale(-1, 1);
       ctx.translate(-flipCenterX, -centerY);
@@ -729,6 +806,7 @@
     if (state === 'GAMEOVER') {
       fallVelY += 920 * dt;
       fallY += fallVelY * dt;
+      fallRotation += (4 + fallVelY * 0.008) * dt;
     }
 
     drawBackground();
