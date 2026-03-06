@@ -11,6 +11,8 @@
   var STAIR0_Y = Math.round(CANVAS_HEIGHT * 3 / 4);
   var STUMP_HEIGHT = 65;
   var GROUND_TOP = STAIR0_Y + STUMP_HEIGHT;
+  var DESIGN_WIDTH = 393;
+  var DESIGN_HEIGHT = 852;
   var STAIR_WIDTH = 56;
   var STAIR_HEIGHT = Math.round(STAIR_WIDTH * 3 / 4);
   var STEP_Y = STAIR_HEIGHT + 28;
@@ -760,16 +762,43 @@
     }
   }
 
+  function updateCanvasSize() {
+    if (!canvas) return;
+    var container = canvas.parentElement;
+    var cw = (container && container.clientWidth > 0) ? container.clientWidth : Math.min(window.innerWidth, document.documentElement.clientWidth);
+    if (cw <= 0) cw = DESIGN_WIDTH;
+    cw = Math.min(cw, Math.floor(DESIGN_WIDTH * 2));
+    var scale = cw / DESIGN_WIDTH;
+    var w = Math.max(240, Math.round(DESIGN_WIDTH * scale));
+    var h = Math.max(520, Math.round(DESIGN_HEIGHT * scale));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      CANVAS_WIDTH = w;
+      CANVAS_HEIGHT = h;
+      STAIR0_Y = Math.round(CANVAS_HEIGHT * 3 / 4);
+      GROUND_TOP = STAIR0_Y + STUMP_HEIGHT;
+      if (state === 'READY') {
+        var pos = getStairPosition(0);
+        quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
+        quokkaY = STAIR0_Y - QUOKKA_H;
+      }
+    }
+  }
+
   function init() {
     canvas = document.getElementById('gameCanvas');
     if (!canvas) return;
     ctx = canvas.getContext('2d');
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
+    updateCanvasSize();
     initGame();
     updateButtonVisibility();
     lastTime = performance.now();
     requestAnimationFrame(loop);
+
+    window.addEventListener('resize', function () {
+      updateCanvasSize();
+    });
 
     var btnStart = document.getElementById('btnStart');
     var btnTurn = document.getElementById('btnTurn');
