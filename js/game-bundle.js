@@ -6,13 +6,16 @@
 (function () {
   'use strict';
 
-  var CANVAS_WIDTH = 400;
-  var CANVAS_HEIGHT = 520;
-  var STAIR_HEIGHT = 20;
-  var STAIR_WIDTH = 100;
-  var STEP_Y = 36;
-  var QUOKKA_W = 44;
-  var QUOKKA_H = 40;
+  var CANVAS_WIDTH = 393;
+  var CANVAS_HEIGHT = 852;
+  var STAIR0_Y = Math.round(CANVAS_HEIGHT * 3 / 4);
+  var STUMP_HEIGHT = 65;
+  var GROUND_TOP = STAIR0_Y + STUMP_HEIGHT;
+  var STAIR_WIDTH = 56;
+  var STAIR_HEIGHT = Math.round(STAIR_WIDTH * 3 / 4);
+  var STEP_Y = STAIR_HEIGHT + 28;
+  var QUOKKA_W = 78;
+  var QUOKKA_H = 70;
   var HIGH_SCORE_KEY = 'quokkaStairsHighScore';
 
   var DIAGONAL_STEPS = 5; // 좌(0) → 우(4) 사선 5단
@@ -27,6 +30,9 @@
   var JUMP_DURATION = 0.22;
   var jumpStartX = 0;
   var jumpStartY = 0;
+  var fallY = 0;
+  var fallVelY = 0;
+  var GAMEOVER_MESSAGE = '이런~ 젠장';
   var canvas, ctx;
   var quokkaImg = new Image();
   quokkaImg.src = 'assets/quokka.png';
@@ -96,7 +102,7 @@
   }
 
   function getStairScreenY(floorIndex) {
-    return CANVAS_HEIGHT - 80 + (floor - floorIndex) * STEP_Y;
+    return STAIR0_Y + (floor - floorIndex) * STEP_Y;
   }
 
   function initGame() {
@@ -104,10 +110,11 @@
     floor = 0;
     direction = 1;
     jumpProgress = 0;
+    fallVelY = 0;
     buildRandomZigzag();
     var pos = getStairPosition(0);
     quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
-    quokkaY = CANVAS_HEIGHT - 80 - QUOKKA_H;
+    quokkaY = STAIR0_Y - QUOKKA_H;
     scrollOffset = 0;
   }
 
@@ -115,6 +122,7 @@
     if (state !== 'READY') return;
     state = 'PLAYING';
     updateFacingDirection();
+    updateButtonVisibility();
     lastTime = performance.now();
   }
 
@@ -145,7 +153,7 @@
     floor += 1;
     var pos = getStairPosition(floor);
     quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
-    quokkaY = CANVAS_HEIGHT - 80 - QUOKKA_H;
+    quokkaY = STAIR0_Y - QUOKKA_H;
     updateFacingDirection();
     jumpProgress = JUMP_DURATION;
   }
@@ -167,7 +175,7 @@
     floor += 1;
     var pos = getStairPosition(floor);
     quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
-    quokkaY = CANVAS_HEIGHT - 80 - QUOKKA_H;
+    quokkaY = STAIR0_Y - QUOKKA_H;
     updateFacingDirection();
     jumpProgress = JUMP_DURATION;
   }
@@ -175,103 +183,323 @@
   function gameOver() {
     if (state !== 'PLAYING') return;
     state = 'GAMEOVER';
+    fallY = quokkaY;
+    fallVelY = 0;
     saveHighScore();
+    updateButtonVisibility();
   }
 
   var animTime = 0;
 
   function drawBackground() {
-    var g = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    g.addColorStop(0, '#87ceeb');
-    g.addColorStop(1, '#b0e0e6');
-    ctx.fillStyle = g;
+    // 밝은 하늘 그라데이션 (전체적으로 밝게)
+    var skyG = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+    skyG.addColorStop(0, '#5a9fd4');
+    skyG.addColorStop(0.3, '#7bb8e8');
+    skyG.addColorStop(0.6, '#9cccf0');
+    skyG.addColorStop(1, '#c5e4fa');
+    ctx.fillStyle = skyG;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    var t = animTime * 0.5;
+    var t = animTime * 0.4;
 
-    for (var i = 0; i < 5; i++) {
-      var cx = ((i * 87 + t * 8) % (CANVAS_WIDTH + 120)) - 60;
-      var cy = 60 + (i % 3) * 70 + Math.sin(t + i) * 15;
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    // 먼 구름 (작고 흐릿하게)
+    for (var i = 0; i < 4; i++) {
+      var fx = ((i * 120 + t * 6) % (CANVAS_WIDTH + 160)) - 80;
+      var fy = 80 + (i % 2) * 90 + Math.sin(t + i * 0.8) * 12;
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
       ctx.beginPath();
-      ctx.ellipse(cx, cy, 35, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(fx, fy, 50, 18, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.ellipse(cx + 22, cy - 4, 28, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx + 10, cy + 6, 25, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(fx + 30, fy - 6, 38, 14, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    for (var b = 0; b < 3; b++) {
-      var bx = ((b * 133 + t * 15) % (CANVAS_WIDTH + 80)) - 40;
-      var by = 120 + (b % 2) * 100 + Math.sin(t * 1.2 + b * 2) * 20;
-      var colors = ['#e74c3c', '#f1c40f', '#3498db'];
-      ctx.fillStyle = colors[b % 3];
+    // 가까운 구름 (더 뚜렷하고 입체감)
+    for (var j = 0; j < 5; j++) {
+      var cx = ((j * 97 + t * 10) % (CANVAS_WIDTH + 140)) - 70;
+      var cy = 140 + (j % 3) * 85 + Math.sin(t * 1.2 + j) * 18;
+      var cloudG = ctx.createRadialGradient(cx - 8, cy - 5, 0, cx, cy, 48);
+      cloudG.addColorStop(0, 'rgba(255,255,255,0.92)');
+      cloudG.addColorStop(0.5, 'rgba(255,255,255,0.82)');
+      cloudG.addColorStop(1, 'rgba(255,255,255,0.5)');
+      ctx.fillStyle = cloudG;
       ctx.beginPath();
-      ctx.ellipse(bx, by, 18, 22, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, 42, 16, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(cx + 28, cy - 5, 32, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx + 12, cy + 8, 28, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx - 10, cy + 4, 22, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 하늘만 (올라가는 느낌 – 바닥/땅 없음)
+    var horizonG = ctx.createLinearGradient(0, CANVAS_HEIGHT * 0.4, 0, CANVAS_HEIGHT);
+    horizonG.addColorStop(0, 'rgba(255,255,255,0)');
+    horizonG.addColorStop(0.6, 'rgba(255,252,248,0.12)');
+    horizonG.addColorStop(1, 'rgba(230,245,255,0.25)');
+    ctx.fillStyle = horizonG;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // 참새 (날아다니는 작은 새)
+    for (var bird = 0; bird < 3; bird++) {
+      var btx = ((bird * 180 + t * 45) % (CANVAS_WIDTH + 100)) - 50;
+      var bty = 100 + (bird % 3) * 120 + Math.sin(t * 2 + bird) * 25;
+      var wingPhase = Math.sin(t * 8 + bird * 3) * 0.5;
+      ctx.save();
+      ctx.translate(btx, bty);
+      ctx.fillStyle = '#5c4033';
+      ctx.strokeStyle = '#3d2b1f';
       ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#8b6914';
+      ctx.beginPath();
+      ctx.moveTo(8, 0);
+      ctx.lineTo(14, -2);
+      ctx.lineTo(14, 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(92,64,51,0.8)';
+      ctx.beginPath();
+      ctx.moveTo(-6, 0);
+      ctx.lineTo(-12, -4 + wingPhase * 6);
+      ctx.lineTo(-8, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-6, 0);
+      ctx.lineTo(-12, 4 - wingPhase * 6);
+      ctx.lineTo(-8, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 풍선 (날아다니는 풍선)
+    for (var bal = 0; bal < 4; bal++) {
+      var bax = ((bal * 140 + t * 18) % (CANVAS_WIDTH + 120)) - 60;
+      var bay = 150 + (bal % 2) * 130 + Math.sin(t * 1.3 + bal * 2) * 22;
+      var balColors = ['#e74c3c', '#f1c40f', '#3498db', '#9b59b6'];
+      var balG = ctx.createRadialGradient(bax - 3, bay - 3, 0, bax, bay, 22);
+      balG.addColorStop(0, 'rgba(255,255,255,0.45)');
+      balG.addColorStop(0.5, balColors[bal % 4]);
+      balG.addColorStop(1, balColors[bal % 4]);
+      ctx.fillStyle = balG;
+      ctx.beginPath();
+      ctx.ellipse(bax, bay, 16, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(bx - 4, by + 22);
-      ctx.lineTo(bx, by + 30);
-      ctx.lineTo(bx + 4, by + 22);
-      ctx.fillStyle = colors[b % 3];
+      ctx.moveTo(bax - 3, bay + 20);
+      ctx.lineTo(bax, bay + 32);
+      ctx.lineTo(bax + 3, bay + 20);
+      ctx.fillStyle = balColors[bal % 4];
       ctx.fill();
       ctx.stroke();
     }
   }
 
+  var STAIR_DEPTH = Math.round(STAIR_HEIGHT * 0.35);
+  var STAIR_RADIUS = 14; // 동글동글한 모서리
+
+  function roundRect(ctx, x, y, width, height, r) {
+    if (r > height / 2) r = height / 2;
+    if (r > width / 2) r = width / 2;
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.arcTo(x + width, y, x + width, y + r, r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.arcTo(x + width, y + height, x + width - r, y + height, r);
+    ctx.lineTo(x + r, y + height);
+    ctx.arcTo(x, y + height, x, y + height - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+  }
+
+  function drawGround() {
+    var groundStartY = GROUND_TOP + floor * STEP_Y;
+    if (groundStartY >= CANVAS_HEIGHT + 20) return;
+    var gTop = groundStartY;
+    var stumpCx = getStairX(getStairPosition(0)) + STAIR_WIDTH / 2;
+    var stumpW = 116;
+    var grassHeight = CANVAS_HEIGHT - gTop + 60;
+    var grassG = ctx.createLinearGradient(0, gTop, 0, gTop + grassHeight);
+    grassG.addColorStop(0, '#4a9050');
+    grassG.addColorStop(0.3, '#3d7a42');
+    grassG.addColorStop(0.7, '#357035');
+    grassG.addColorStop(1, '#2a5a2d');
+    ctx.fillStyle = grassG;
+    ctx.fillRect(0, gTop, CANVAS_WIDTH, grassHeight);
+    ctx.shadowColor = 'rgba(0,0,0,0.2)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 2;
+    for (var g = 0; g < 55; g++) {
+      var gx = (g * 37 + Math.floor(animTime * 2) % 80) % (CANVAS_WIDTH + 60) - 30;
+      var gy = gTop + 10 + (g % 6) * 18 + (g % 4) * 6;
+      if (gy > CANVAS_HEIGHT + 10) continue;
+      if (state === 'READY' && floor === 0) {
+        var distFromStump = Math.abs(gx - stumpCx);
+        if (distFromStump < stumpW / 2 + 25 && gy < gTop + 50) continue;
+      }
+      var bladeG = ctx.createLinearGradient(gx - 4, gy, gx + 4, gy + 10);
+      bladeG.addColorStop(0, 'rgba(70,120,60,0.9)');
+      bladeG.addColorStop(1, 'rgba(50,90,45,0.95)');
+      ctx.fillStyle = bladeG;
+      ctx.beginPath();
+      ctx.moveTo(gx, gy + 8);
+      ctx.lineTo(gx - 3, gy);
+      ctx.lineTo(gx + 1, gy + 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+  }
+
+  function drawStump() {
+    var cx = quokkaX;
+    var topY = STAIR0_Y;
+    var stumpH = STUMP_HEIGHT;
+    var stumpW = 116;
+    var left = cx - stumpW / 2;
+    var bottomY = topY + stumpH;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 8;
+    ctx.beginPath();
+    ctx.ellipse(cx, bottomY + 4, stumpW / 2 + 4, 10, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    var topRadial = ctx.createRadialGradient(cx - 20, topY - 5, 0, cx, topY, stumpW / 2 + 10);
+    topRadial.addColorStop(0, '#b09030');
+    topRadial.addColorStop(0.4, '#9a7a20');
+    topRadial.addColorStop(0.8, '#7a5a10');
+    topRadial.addColorStop(1, '#5a3a08');
+    ctx.fillStyle = topRadial;
+    ctx.beginPath();
+    ctx.ellipse(cx, topY, stumpW / 2, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    var sideG = ctx.createLinearGradient(left, topY, left + stumpW, topY);
+    sideG.addColorStop(0, '#5a3a0a');
+    sideG.addColorStop(0.25, '#7a5a14');
+    sideG.addColorStop(0.5, '#9a7a24');
+    sideG.addColorStop(0.75, '#7a5a14');
+    sideG.addColorStop(1, '#5a3a0a');
+    ctx.fillStyle = sideG;
+    ctx.beginPath();
+    ctx.moveTo(left, topY + 12);
+    ctx.lineTo(left + stumpW, topY + 12);
+    ctx.lineTo(left + stumpW - 5, bottomY + 4);
+    ctx.lineTo(left + 5, bottomY + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(left, topY + 12, stumpW * 0.35, stumpH);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.strokeStyle = '#4a2a06';
+    ctx.lineWidth = 2;
+    for (var ring = 1; ring <= 3; ring++) {
+      var ry = topY + 14 + ring * (stumpH / 4);
+      ctx.beginPath();
+      ctx.ellipse(cx, ry, stumpW / 2 - 5, 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawStairs() {
-    var visibleMin = Math.max(0, floor - 2);
-    var visibleMax = floor + 14;
-    var radius = 8;
+    var visibleMin = Math.max(0, floor - 1);
+    var visibleMax = floor + 9;
+    var r = Math.min(STAIR_RADIUS, STAIR_HEIGHT / 2 - 1);
     for (var i = visibleMin; i <= visibleMax; i++) {
+      if (state === 'READY' && i === 0) continue;
       var pos = getStairPosition(i);
       var sx = getStairX(pos);
       var sy = getStairScreenY(i);
-      if (sy < -STAIR_HEIGHT || sy > CANVAS_HEIGHT + 20) continue;
+      if (sy < -STAIR_HEIGHT - 20 || sy > CANVAS_HEIGHT + 20) continue;
       var w = STAIR_WIDTH;
       var h = STAIR_HEIGHT;
+      var d = STAIR_DEPTH;
       ctx.save();
+
+      // 1) 그림자 (동글동글)
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 4;
       ctx.beginPath();
-      ctx.moveTo(sx + radius, sy);
-      ctx.lineTo(sx + w - radius, sy);
-      ctx.arcTo(sx + w, sy, sx + w, sy + radius, radius);
-      ctx.lineTo(sx + w, sy + h - radius);
-      ctx.arcTo(sx + w, sy + h, sx + w - radius, sy + h, radius);
-      ctx.lineTo(sx + radius, sy + h);
-      ctx.arcTo(sx, sy + h, sx, sy + h - radius, radius);
-      ctx.lineTo(sx, sy + radius);
-      ctx.arcTo(sx, sy, sx + radius, sy, radius);
+      roundRect(ctx, sx + 2, sy + 3, w, h + d, r);
       ctx.closePath();
-      ctx.fillStyle = '#f8b4c4';
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
       ctx.fill();
-      ctx.strokeStyle = '#e89aad';
-      ctx.lineWidth = 1.5;
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      // 2) 흙덩이 앞면
+      ctx.fillStyle = '#5a5a4a';
+      ctx.fillRect(sx, sy + h, w, d);
+      ctx.fillStyle = '#4a4a3a';
+      ctx.fillRect(sx, sy + h + d - 2, w, 2);
+
+      // 3) 흙덩이 윗면 (둥근 블록)
+      ctx.beginPath();
+      roundRect(ctx, sx, sy, w, h, r);
+      ctx.closePath();
+      var dirtG = ctx.createLinearGradient(sx, sy, sx, sy + h);
+      dirtG.addColorStop(0, '#6a6a5a');
+      dirtG.addColorStop(0.5, '#5a5a4a');
+      dirtG.addColorStop(1, '#4a4a3a');
+      ctx.fillStyle = dirtG;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.fillStyle = '#fff0f5';
-      ctx.fillRect(sx + 2, sy + 2, w - 4, Math.floor(h * 0.4));
-      ctx.fillStyle = '#dc3545';
+
+      // 4) 윗면 잔디
       ctx.beginPath();
-      ctx.ellipse(sx + w / 2, sy + 7, 6, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#2d5a27';
-      ctx.beginPath();
-      ctx.moveTo(sx + w / 2 - 4, sy + 2);
-      ctx.lineTo(sx + w / 2, sy - 2);
-      ctx.lineTo(sx + w / 2 + 4, sy + 2);
+      roundRect(ctx, sx + 1, sy + 1, w - 2, Math.floor(h * 0.5), r - 1);
       ctx.closePath();
+      ctx.fillStyle = '#4a8a4d';
       ctx.fill();
-      ctx.fillStyle = '#ffebee';
-      for (var d = 0; d < 5; d++) {
-        var seedX = sx + w / 2 - 4 + d * 2 + (d % 2) * 0.5;
-        var seedY = sy + 6 + (d % 2) * 2;
+      ctx.fillStyle = '#5aa05d';
+      for (var g = 0; g < 8; g++) {
+        var gx = sx + 6 + (g % 3) * (w / 3) + (Math.sin(i + g) * 2);
+        var gy = sy + 3 + Math.floor(g / 3) * 4;
         ctx.beginPath();
-        ctx.arc(seedX, seedY, 1, 0, Math.PI * 2);
+        ctx.arc(gx, gy + 3, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#6ab06d';
+      for (var g2 = 0; g2 < 5; g2++) {
+        var g2x = sx + 10 + (g2 % 2) * (w / 2.2);
+        var g2y = sy + 5 + (g2 % 2) * 3;
+        ctx.beginPath();
+        ctx.arc(g2x, g2y + 2, 1.2, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
@@ -282,8 +510,33 @@
     var w = QUOKKA_W;
     var h = QUOKKA_H;
     var drawX = quokkaX - w / 2;
-    var drawY = quokkaY;
-    if (jumpProgress > 0) {
+    var drawY = state === 'GAMEOVER' ? fallY : quokkaY;
+    if (jumpProgress <= 0 && state !== 'GAMEOVER') {
+      var dance = Math.sin(animTime * 4) * 2.5;
+      var sway = Math.cos(animTime * 2.6) * 2;
+      drawY += dance;
+      drawX += sway;
+    }
+    // 3D풍 발밑 그림자 (바닥 고정, 낙하 중에는 그리지 않음)
+    var shadowY = (state === 'GAMEOVER' ? fallY : quokkaY) + h - 6;
+    var shadowW = w * 1.15;
+    var shadowH = 10;
+    var shadowAlpha = 0.35;
+    if (state === 'GAMEOVER') shadowAlpha = 0;
+    if (jumpProgress > 0 && state !== 'GAMEOVER') {
+      var t = 1 - jumpProgress / JUMP_DURATION;
+      shadowY = quokkaY + h - 6 + 20 * t;
+      shadowW = w * (1.15 + 0.3 * t);
+      shadowH = 10 + 4 * t;
+      shadowAlpha = 0.35 * (1 - t * 0.8);
+    }
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,' + shadowAlpha + ')';
+    ctx.beginPath();
+    ctx.ellipse(quokkaX, shadowY, shadowW / 2, shadowH, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (jumpProgress > 0 && state !== 'GAMEOVER') {
       var t = 1 - jumpProgress / JUMP_DURATION;
       var fromX = jumpStartX - w / 2;
       var toX = quokkaX - w / 2;
@@ -304,7 +557,7 @@
       }
     }
     var centerY = drawY + h / 2;
-    var flipCenterX = jumpProgress > 0 ? (drawX + w / 2) : quokkaX;
+    var flipCenterX = (jumpProgress > 0 && state !== 'GAMEOVER') ? (drawX + w / 2) : quokkaX;
 
     ctx.save();
     if (state === 'READY' || direction === -1) {
@@ -333,6 +586,40 @@
       ctx.fill();
     }
     ctx.restore();
+
+    // 게임 오버 시 말풍선 "이런~ 젠장"
+    if (state === 'GAMEOVER' && fallY < CANVAS_HEIGHT + 80) {
+      var bx = drawX + w / 2;
+      var by = drawY - 8;
+      var bubbleW = 100;
+      var bubbleH = 32;
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.98)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 2;
+      var br = 12;
+      var bleft = bx - bubbleW / 2;
+      var btop = by - bubbleH;
+      ctx.beginPath();
+      ctx.moveTo(bleft + br, btop);
+      ctx.lineTo(bleft + bubbleW - br, btop);
+      ctx.arcTo(bleft + bubbleW, btop, bleft + bubbleW, btop + br, br);
+      ctx.lineTo(bleft + bubbleW, btop + bubbleH - br);
+      ctx.arcTo(bleft + bubbleW, btop + bubbleH, bleft + bubbleW - br, btop + bubbleH, br);
+      ctx.lineTo(bleft + br, btop + bubbleH);
+      ctx.arcTo(bleft, btop + bubbleH, bleft, btop + bubbleH - br, br);
+      ctx.lineTo(bleft, btop + br);
+      ctx.arcTo(bleft, btop, bleft + br, btop, br);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 15px "Malgun Gothic", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(GAMEOVER_MESSAGE, bx, by - bubbleH / 2);
+      ctx.restore();
+    }
   }
 
   function drawUI() {
@@ -355,11 +642,11 @@
     ctx.fillText('무한의 계단', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50);
     ctx.font = '16px sans-serif';
     ctx.fillText('귀여운 쿼카와 함께!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
-    ctx.fillText('아래 버튼으로 시작', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+    ctx.fillText('아래 [게임 시작하기] 버튼을 눌러 시작', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
   }
 
   function drawGameOverOverlay() {
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 22px sans-serif';
@@ -368,7 +655,31 @@
     ctx.fillText(floor + ' 층 달성', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 15);
     ctx.fillText('최고 기록: ' + getHighScore() + ' 층', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
     ctx.font = '14px sans-serif';
-    ctx.fillText('다시 하기 버튼을 누르세요', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 55);
+    ctx.fillText('아래 [다시 시작하기] 버튼을 누르세요', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 55);
+  }
+
+  function updateButtonVisibility() {
+    var btnStart = document.getElementById('btnStart');
+    var btnTurn = document.getElementById('btnTurn');
+    var btnClimb = document.getElementById('btnClimb');
+    var btnRestart = document.getElementById('btnRestart');
+    var show = function (el, visible) { if (el) el.style.display = visible ? '' : 'none'; };
+    if (state === 'READY') {
+      show(btnStart, true);
+      show(btnTurn, false);
+      show(btnClimb, false);
+      show(btnRestart, false);
+    } else if (state === 'PLAYING') {
+      show(btnStart, false);
+      show(btnTurn, true);
+      show(btnClimb, true);
+      show(btnRestart, false);
+    } else if (state === 'GAMEOVER') {
+      show(btnStart, false);
+      show(btnTurn, false);
+      show(btnClimb, false);
+      show(btnRestart, true);
+    }
   }
 
   function loop(timestamp) {
@@ -376,8 +687,14 @@
     lastTime = timestamp;
     animTime += dt;
     if (jumpProgress > 0) jumpProgress -= dt;
+    if (state === 'GAMEOVER') {
+      fallVelY += 920 * dt;
+      fallY += fallVelY * dt;
+    }
 
     drawBackground();
+    drawGround();
+    if (state === 'READY') drawStump();
     drawStairs();
     drawQuokka();
     drawUI();
@@ -389,28 +706,22 @@
   }
 
   function onTurnClick() {
-    if (state === 'READY') {
-      startGame();
-      return;
-    }
     if (state === 'GAMEOVER') {
       initGame();
       startGame();
       return;
     }
+    if (state !== 'PLAYING') return;
     turnWithJump();
   }
 
   function onClimbClick() {
-    if (state === 'READY') {
-      startGame();
-      return;
-    }
     if (state === 'GAMEOVER') {
       initGame();
       startGame();
       return;
     }
+    if (state !== 'PLAYING') return;
     climb();
   }
 
@@ -456,13 +767,18 @@
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     initGame();
+    updateButtonVisibility();
     lastTime = performance.now();
     requestAnimationFrame(loop);
 
+    var btnStart = document.getElementById('btnStart');
     var btnTurn = document.getElementById('btnTurn');
     var btnClimb = document.getElementById('btnClimb');
+    var btnRestart = document.getElementById('btnRestart');
+    if (btnStart) btnStart.addEventListener('click', function () { if (state === 'READY') startGame(); });
     if (btnTurn) btnTurn.addEventListener('click', onTurnClick);
     if (btnClimb) btnClimb.addEventListener('click', onClimbClick);
+    if (btnRestart) btnRestart.addEventListener('click', function () { if (state === 'GAMEOVER') { initGame(); startGame(); } });
 
     document.addEventListener('keydown', onKeyDown);
     canvas.addEventListener('click', onCanvasTap);
