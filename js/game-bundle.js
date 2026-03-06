@@ -8,17 +8,21 @@
 
   var CANVAS_WIDTH = 393;
   var CANVAS_HEIGHT = 852;
+  var DESIGN_WIDTH = 393;
+  var DESIGN_HEIGHT = 852;
+  var GAME_SCALE = 1;
   var GROUND_TOP = Math.round(CANVAS_HEIGHT * 0.88);
   var STUMP_HEIGHT = 65;
   var STAIR0_Y = GROUND_TOP - STUMP_HEIGHT;
-  var DESIGN_WIDTH = 393;
-  var DESIGN_HEIGHT = 852;
+  var PADDING = 24;
   var STAIR_WIDTH = 56;
   var STAIR_HEIGHT = Math.round(STAIR_WIDTH * 3 / 4);
   var STEP_Y = STAIR_HEIGHT + 28;
   var QUOKKA_W = 78;
   var QUOKKA_H = 70;
   var QUOKKA_STAND_OFFSET = 5;
+  var STAIR_DEPTH = Math.round(STAIR_HEIGHT * 0.35);
+  var STAIR_RADIUS = 14;
   var HIGH_SCORE_KEY = 'quokkaStairsHighScore';
 
   var DIAGONAL_STEPS = 5; // 좌(0) → 우(4) 사선 5단
@@ -99,10 +103,9 @@
   }
 
   function getStairX(position) {
-    var padding = 24;
-    var range = CANVAS_WIDTH - 2 * padding - STAIR_WIDTH;
-    if (DIAGONAL_STEPS <= 1) return padding;
-    return padding + (position / (DIAGONAL_STEPS - 1)) * range;
+    var range = CANVAS_WIDTH - 2 * PADDING - STAIR_WIDTH;
+    if (DIAGONAL_STEPS <= 1) return PADDING;
+    return PADDING + (position / (DIAGONAL_STEPS - 1)) * range;
   }
 
   /** 우→좌 구간이면 true → 방향 전환 필수 */
@@ -219,13 +222,13 @@
       var blobs = isFar
         ? [[0, 0, 1, 0.5], [0.5, -0.15, 0.7, 0.4], [0.25, 0.2, 0.55, 0.35], [-0.2, 0.1, 0.45, 0.38]]
         : [[0, 0, 1, 0.55], [0.55, -0.2, 0.75, 0.45], [0.3, 0.25, 0.6, 0.4], [-0.25, 0.05, 0.5, 0.42], [0.15, 0.35, 0.45, 0.35]];
-      var b, bx, by, rw, rh, grad;
+      var b, bx, by, rw, rh, grad, S = GAME_SCALE;
       if (isFar) {
         for (b = 0; b < blobs.length; b++) {
-          bx = centerX + blobs[b][0] * scale * 55;
-          by = centerY + blobs[b][1] * scale * 45;
-          rw = blobs[b][2] * scale * 48;
-          rh = blobs[b][3] * scale * 28;
+          bx = centerX + blobs[b][0] * scale * 55 * S;
+          by = centerY + blobs[b][1] * scale * 45 * S;
+          rw = blobs[b][2] * scale * 48 * S;
+          rh = blobs[b][3] * scale * 28 * S;
           ctx.fillStyle = 'rgba(255,255,255,' + (opacity * 0.5) + ')';
           ctx.beginPath();
           ctx.ellipse(bx, by, rw, rh, 0, 0, Math.PI * 2);
@@ -234,10 +237,10 @@
         return;
       }
       for (b = 0; b < blobs.length; b++) {
-        bx = centerX + blobs[b][0] * scale * 55;
-        by = centerY + blobs[b][1] * scale * 45;
-        rw = blobs[b][2] * scale * 48;
-        rh = blobs[b][3] * scale * 28;
+        bx = centerX + blobs[b][0] * scale * 55 * S;
+        by = centerY + blobs[b][1] * scale * 45 * S;
+        rw = blobs[b][2] * scale * 48 * S;
+        rh = blobs[b][3] * scale * 28 * S;
         grad = ctx.createRadialGradient(bx - rw * 0.4, by - rh * 0.45, 0, bx + rw * 0.25, by + rh * 0.3, rw * 1.2);
         grad.addColorStop(0, 'rgba(255,255,255,' + (opacity * 0.98) + ')');
         grad.addColorStop(0.35, 'rgba(255,255,255,' + (opacity * 0.9) + ')');
@@ -251,17 +254,18 @@
       }
     }
 
+    var S = GAME_SCALE;
     // 먼 구름 (뭉게뭉게, 흐릿한 레이어)
     for (var i = 0; i < 5; i++) {
-      var fx = ((i * 115 + t * 5) % (CANVAS_WIDTH + 200)) - 100;
-      var fy = 60 + (i % 3) * 95 + Math.sin(t + i * 0.7) * 15;
+      var fx = ((i * 115 * S + t * 5) % (CANVAS_WIDTH + 200 * S)) - 100 * S;
+      var fy = 60 * S + (i % 3) * 95 * S + Math.sin(t + i * 0.7) * 15 * S;
       drawPuffyCloud(fx, fy, 0.85 + (i % 3) * 0.15, 0.48, true);
     }
 
     // 가까운 구름 (뭉게뭉게 + 3D 그라데이션)
     for (var j = 0; j < 6; j++) {
-      var cx = ((j * 88 + t * 9) % (CANVAS_WIDTH + 160)) - 80;
-      var cy = 130 + (j % 3) * 90 + Math.sin(t * 1.1 + j * 1.3) * 20;
+      var cx = ((j * 88 * S + t * 9) % (CANVAS_WIDTH + 160 * S)) - 80 * S;
+      var cy = 130 * S + (j % 3) * 90 * S + Math.sin(t * 1.1 + j * 1.3) * 20 * S;
       drawPuffyCloud(cx, cy, 1 + (j % 2) * 0.2, 0.9, false);
     }
 
@@ -275,12 +279,13 @@
 
     // 참새 (날개짓하며 날아다니는 작은 새)
     for (var bird = 0; bird < 3; bird++) {
-      var btx = ((bird * 180 + t * 45) % (CANVAS_WIDTH + 100)) - 50;
-      var bty = 100 + (bird % 3) * 120 + Math.sin(t * 2 + bird) * 25;
+      var btx = ((bird * 180 * S + t * 45) % (CANVAS_WIDTH + 100 * S)) - 50 * S;
+      var bty = 100 * S + (bird % 3) * 120 * S + Math.sin(t * 2 + bird) * 25 * S;
       var wingPhase = Math.sin(t * 14 + bird * 2.1);
       var wingY = wingPhase * 9;
       ctx.save();
       ctx.translate(btx, bty);
+      ctx.scale(S, S);
       if (birdImg.complete && birdImg.naturalWidth > 0) {
         var flapScale = 1 + 0.14 * wingPhase;
         var bw = 28;
@@ -329,32 +334,30 @@
 
     // 풍선 (날아다니는 풍선)
     for (var bal = 0; bal < 4; bal++) {
-      var bax = ((bal * 140 + t * 18) % (CANVAS_WIDTH + 120)) - 60;
-      var bay = 150 + (bal % 2) * 130 + Math.sin(t * 1.3 + bal * 2) * 22;
+      var bax = ((bal * 140 * S + t * 18) % (CANVAS_WIDTH + 120 * S)) - 60 * S;
+      var bay = 150 * S + (bal % 2) * 130 * S + Math.sin(t * 1.3 + bal * 2) * 22 * S;
       var balColors = ['#e74c3c', '#f1c40f', '#3498db', '#9b59b6'];
-      var balG = ctx.createRadialGradient(bax - 3, bay - 3, 0, bax, bay, 22);
+      var balR = 22 * S;
+      var balG = ctx.createRadialGradient(bax - 3, bay - 3, 0, bax, bay, balR);
       balG.addColorStop(0, 'rgba(255,255,255,0.45)');
       balG.addColorStop(0.5, balColors[bal % 4]);
       balG.addColorStop(1, balColors[bal % 4]);
       ctx.fillStyle = balG;
       ctx.beginPath();
-      ctx.ellipse(bax, bay, 16, 20, 0, 0, Math.PI * 2);
+      ctx.ellipse(bax, bay, 16 * S, 20 * S, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.12)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(bax - 3, bay + 20);
-      ctx.lineTo(bax, bay + 32);
-      ctx.lineTo(bax + 3, bay + 20);
+      ctx.moveTo(bax - 3, bay + 20 * S);
+      ctx.lineTo(bax, bay + 32 * S);
+      ctx.lineTo(bax + 3, bay + 20 * S);
       ctx.fillStyle = balColors[bal % 4];
       ctx.fill();
       ctx.stroke();
     }
   }
-
-  var STAIR_DEPTH = Math.round(STAIR_HEIGHT * 0.35);
-  var STAIR_RADIUS = 14; // 동글동글한 모서리
 
   function roundRect(ctx, x, y, width, height, r) {
     if (r > height / 2) r = height / 2;
@@ -376,8 +379,8 @@
     if (groundStartY >= CANVAS_HEIGHT + 20) return;
     var gTop = groundStartY;
     var stumpCx = getStairX(getStairPosition(0)) + STAIR_WIDTH / 2;
-    var stumpW = 116;
-    var grassHeight = CANVAS_HEIGHT - gTop + 60;
+    var stumpW = 116 * GAME_SCALE;
+    var grassHeight = CANVAS_HEIGHT - gTop + Math.round(60 * GAME_SCALE);
     var grassG = ctx.createLinearGradient(0, gTop, 0, gTop + grassHeight);
     grassG.addColorStop(0, '#4a9050');
     grassG.addColorStop(0.3, '#3d7a42');
@@ -388,22 +391,26 @@
     ctx.shadowColor = 'rgba(0,0,0,0.2)';
     ctx.shadowBlur = 3;
     ctx.shadowOffsetY = 2;
+    var grassStep = 37 * GAME_SCALE;
+    var grassOffset = 30 * GAME_SCALE;
     for (var g = 0; g < 55; g++) {
-      var gx = (g * 37 + Math.floor(animTime * 2) % 80) % (CANVAS_WIDTH + 60) - 30;
-      var gy = gTop + 10 + (g % 6) * 18 + (g % 4) * 6;
+      var gx = (g * grassStep + Math.floor(animTime * 2) % 80) % (CANVAS_WIDTH + 60 * GAME_SCALE) - grassOffset;
+      var gy = gTop + 10 * GAME_SCALE + (g % 6) * 18 * GAME_SCALE + (g % 4) * 6 * GAME_SCALE;
       if (gy > CANVAS_HEIGHT + 10) continue;
       if (state === 'READY' && floor === 0) {
         var distFromStump = Math.abs(gx - stumpCx);
-        if (distFromStump < stumpW / 2 + 25 && gy < gTop + 50) continue;
+        if (distFromStump < stumpW / 2 + 25 * GAME_SCALE && gy < gTop + 50 * GAME_SCALE) continue;
       }
-      var bladeG = ctx.createLinearGradient(gx - 4, gy, gx + 4, gy + 10);
+      var bladeW = 4 * GAME_SCALE;
+      var bladeH = 10 * GAME_SCALE;
+      var bladeG = ctx.createLinearGradient(gx - bladeW, gy, gx + bladeW, gy + bladeH);
       bladeG.addColorStop(0, 'rgba(70,120,60,0.9)');
       bladeG.addColorStop(1, 'rgba(50,90,45,0.95)');
       ctx.fillStyle = bladeG;
       ctx.beginPath();
-      ctx.moveTo(gx, gy + 8);
-      ctx.lineTo(gx - 3, gy);
-      ctx.lineTo(gx + 1, gy + 6);
+      ctx.moveTo(gx, gy + 8 * GAME_SCALE);
+      ctx.lineTo(gx - 3 * GAME_SCALE, gy);
+      ctx.lineTo(gx + 1 * GAME_SCALE, gy + 6 * GAME_SCALE);
       ctx.closePath();
       ctx.fill();
     }
@@ -412,9 +419,10 @@
     ctx.shadowOffsetY = 0;
 
     function drawTree(tx, baseY, scale) {
-      var trunkH = 42 * scale;
-      var trunkW = 8 * scale;
-      var foliageR = 28 * scale;
+      var s = GAME_SCALE * scale;
+      var trunkH = 42 * s;
+      var trunkW = 8 * s;
+      var foliageR = 28 * s;
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,0.2)';
       ctx.shadowBlur = 4;
@@ -439,13 +447,13 @@
       ctx.shadowBlur = 0;
       ctx.restore();
     }
-    var treeBaseY = gTop + 8 + Math.floor(animTime * 0.5) % 4;
-    drawTree(28, treeBaseY, 1);
-    drawTree(62, treeBaseY + 12, 0.85);
-    drawTree(95, treeBaseY - 5, 1.1);
-    drawTree(CANVAS_WIDTH - 28, treeBaseY + 5, 0.9);
-    drawTree(CANVAS_WIDTH - 65, treeBaseY - 8, 1.05);
-    drawTree(CANVAS_WIDTH - 98, treeBaseY + 8, 0.8);
+    var treeBaseY = gTop + 8 * GAME_SCALE + Math.floor(animTime * 0.5) % 4;
+    drawTree(28 * GAME_SCALE, treeBaseY, 1);
+    drawTree(62 * GAME_SCALE, treeBaseY + 12 * GAME_SCALE, 0.85);
+    drawTree(95 * GAME_SCALE, treeBaseY - 5 * GAME_SCALE, 1.1);
+    drawTree(CANVAS_WIDTH - 28 * GAME_SCALE, treeBaseY + 5 * GAME_SCALE, 0.9);
+    drawTree(CANVAS_WIDTH - 65 * GAME_SCALE, treeBaseY - 8 * GAME_SCALE, 1.05);
+    drawTree(CANVAS_WIDTH - 98 * GAME_SCALE, treeBaseY + 8 * GAME_SCALE, 0.8);
   }
 
   var STUMP_SCALE = 1.3;
@@ -705,15 +713,16 @@
 
     // 게임 오버 시 말풍선 "이런~ 젠장"
     if (state === 'GAMEOVER' && fallY < CANVAS_HEIGHT + 80) {
+      var Sb = GAME_SCALE;
       var bx = drawX + w / 2;
-      var by = drawY - 8;
-      var bubbleW = 100;
-      var bubbleH = 32;
+      var by = drawY - 8 * Sb;
+      var bubbleW = 100 * Sb;
+      var bubbleH = 32 * Sb;
       ctx.save();
       ctx.fillStyle = 'rgba(255,255,255,0.98)';
       ctx.strokeStyle = 'rgba(0,0,0,0.25)';
       ctx.lineWidth = 2;
-      var br = 12;
+      var br = 12 * Sb;
       var bleft = bx - bubbleW / 2;
       var btop = by - bubbleH;
       ctx.beginPath();
@@ -730,7 +739,7 @@
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#333';
-      ctx.font = 'bold 15px "Malgun Gothic", sans-serif';
+      ctx.font = 'bold ' + Math.round(15 * Sb) + 'px "Malgun Gothic", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(GAMEOVER_MESSAGE, bx, by - bubbleH / 2);
@@ -739,39 +748,43 @@
   }
 
   function drawUI() {
+    var S = GAME_SCALE;
+    var barH = Math.round(42 * S);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, 42);
+    ctx.fillRect(0, 0, CANVAS_WIDTH, barH);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = 'bold ' + Math.round(18 * S) + 'px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(floor + ' 층', 12, 26);
+    ctx.fillText(floor + ' 층', 12 * S, barH / 2 + 4);
     ctx.textAlign = 'right';
-    ctx.fillText('최고: ' + getHighScore() + ' 층', CANVAS_WIDTH - 12, 26);
+    ctx.fillText('최고: ' + getHighScore() + ' 층', CANVAS_WIDTH - 12 * S, barH / 2 + 4);
   }
 
   function drawReadyOverlay() {
+    var S = GAME_SCALE;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 24px sans-serif';
+    ctx.font = 'bold ' + Math.round(24 * S) + 'px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('무한의 계단', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50);
-    ctx.font = '16px sans-serif';
-    ctx.fillText('귀여운 쿼카와 함께!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
-    ctx.fillText('아래 [게임 시작하기] 버튼을 눌러 시작', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+    ctx.fillText('무한의 계단', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50 * S);
+    ctx.font = Math.round(16 * S) + 'px sans-serif';
+    ctx.fillText('귀여운 쿼카와 함께!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20 * S);
+    ctx.fillText('아래 [게임 시작하기] 버튼을 눌러 시작', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20 * S);
   }
 
   function drawGameOverOverlay() {
+    var S = GAME_SCALE;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 22px sans-serif';
+    ctx.font = 'bold ' + Math.round(22 * S) + 'px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('게임 오버', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50);
-    ctx.fillText(floor + ' 층 달성', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 15);
-    ctx.fillText('최고 기록: ' + getHighScore() + ' 층', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
-    ctx.font = '14px sans-serif';
-    ctx.fillText('아래 [다시 시작하기] 버튼을 누르세요', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 55);
+    ctx.fillText('게임 오버', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50 * S);
+    ctx.fillText(floor + ' 층 달성', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 15 * S);
+    ctx.fillText('최고 기록: ' + getHighScore() + ' 층', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20 * S);
+    ctx.font = Math.round(14 * S) + 'px sans-serif';
+    ctx.fillText('아래 [다시 시작하기] 버튼을 누르세요', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 55 * S);
   }
 
   function updateButtonVisibility() {
@@ -887,18 +900,29 @@
     var scale = Math.min(cw / DESIGN_WIDTH, ch / DESIGN_HEIGHT);
     var w = Math.max(200, Math.round(DESIGN_WIDTH * scale));
     var h = Math.max(400, Math.round(DESIGN_HEIGHT * scale));
-    if (canvas.width !== w || canvas.height !== h) {
+    var sizeChanged = canvas.width !== w || canvas.height !== h;
+    if (sizeChanged) {
       canvas.width = w;
       canvas.height = h;
-      CANVAS_WIDTH = w;
-      CANVAS_HEIGHT = h;
-      GROUND_TOP = Math.round(CANVAS_HEIGHT * 0.88);
-      STAIR0_Y = GROUND_TOP - STUMP_HEIGHT;
-      if (state === 'READY') {
-        var pos = getStairPosition(0);
-        quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
-        quokkaY = STAIR0_Y - QUOKKA_H + 3;
-      }
+    }
+    CANVAS_WIDTH = w;
+    CANVAS_HEIGHT = h;
+    GAME_SCALE = scale;
+    PADDING = Math.round(24 * scale);
+    STAIR_WIDTH = Math.max(20, Math.round(56 * scale));
+    STAIR_HEIGHT = Math.round(STAIR_WIDTH * 3 / 4);
+    STEP_Y = STAIR_HEIGHT + Math.round(28 * scale);
+    QUOKKA_W = Math.round(78 * scale);
+    QUOKKA_H = Math.round(70 * scale);
+    STUMP_HEIGHT = Math.round(65 * scale);
+    STAIR_DEPTH = Math.round(STAIR_HEIGHT * 0.35);
+    STAIR_RADIUS = Math.max(6, Math.min(14, Math.round(14 * scale)));
+    GROUND_TOP = Math.round(CANVAS_HEIGHT * 0.88);
+    STAIR0_Y = GROUND_TOP - STUMP_HEIGHT;
+    if (sizeChanged && state === 'READY') {
+      var pos = getStairPosition(0);
+      quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
+      quokkaY = STAIR0_Y - QUOKKA_H + 3;
     }
   }
 
