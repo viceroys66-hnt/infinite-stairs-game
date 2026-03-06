@@ -795,9 +795,19 @@
     lastTime = performance.now();
     requestAnimationFrame(loop);
 
-    window.addEventListener('resize', function () { updateCanvasSize(); });
+    function onResize() {
+      requestAnimationFrame(function () {
+        updateCanvasSize();
+        if (state === 'READY') {
+          var pos = getStairPosition(0);
+          quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
+          quokkaY = STAIR0_Y - QUOKKA_H;
+        }
+      });
+    }
+    window.addEventListener('resize', onResize);
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', function () { updateCanvasSize(); });
+      window.visualViewport.addEventListener('resize', onResize);
     }
     requestAnimationFrame(function () {
       updateCanvasSize();
