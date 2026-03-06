@@ -765,12 +765,11 @@
   function updateCanvasSize() {
     if (!canvas) return;
     var container = canvas.parentElement;
-    var cw = (container && container.clientWidth > 0) ? container.clientWidth : Math.min(window.innerWidth, document.documentElement.clientWidth);
-    if (cw <= 0) cw = DESIGN_WIDTH;
-    cw = Math.min(cw, Math.floor(DESIGN_WIDTH * 2));
+    var cw = (container && container.clientWidth > 0) ? container.clientWidth : (window.visualViewport ? window.visualViewport.width : window.innerWidth);
+    if (cw <= 0) cw = document.documentElement.clientWidth || window.innerWidth || DESIGN_WIDTH;
     var scale = cw / DESIGN_WIDTH;
-    var w = Math.max(240, Math.round(DESIGN_WIDTH * scale));
-    var h = Math.max(520, Math.round(DESIGN_HEIGHT * scale));
+    var w = Math.max(280, Math.round(DESIGN_WIDTH * scale));
+    var h = Math.max(480, Math.round(DESIGN_HEIGHT * scale));
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -796,8 +795,17 @@
     lastTime = performance.now();
     requestAnimationFrame(loop);
 
-    window.addEventListener('resize', function () {
+    window.addEventListener('resize', function () { updateCanvasSize(); });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () { updateCanvasSize(); });
+    }
+    requestAnimationFrame(function () {
       updateCanvasSize();
+      if (state === 'READY') {
+        var pos = getStairPosition(0);
+        quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
+        quokkaY = STAIR0_Y - QUOKKA_H;
+      }
     });
 
     var btnStart = document.getElementById('btnStart');
