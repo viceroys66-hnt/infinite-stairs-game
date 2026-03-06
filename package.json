@@ -1,0 +1,17 @@
+{
+  "name": "quokka-stairs",
+  "version": "1.0.0",
+  "description": "무한의 계단 - 귀여운 쿼카 게임",
+  "main": "js/main.js",
+  "scripts": {
+    "start": "start index.html",
+    "open": "start index.html",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"
+  },
+  "type": "module",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}
