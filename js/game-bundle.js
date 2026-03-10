@@ -126,11 +126,11 @@
   function initGame() {
     state = 'READY';
     floor = 0;
-    direction = 1;
     jumpProgress = 0;
     fallVelY = 0;
     timeRemaining = TIME_LIMIT;
     buildRandomZigzag();
+    direction = getStairPosition(1) > getStairPosition(0) ? 1 : -1;
     var pos = getStairPosition(0);
     quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
     quokkaY = STAIR0_Y - QUOKKA_H + 3;
@@ -219,7 +219,17 @@
     var H = CANVAS_HEIGHT;
 
     if (bgImg.complete && bgImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.filter = 'blur(1.5px)';
       ctx.drawImage(bgImg, 0, 0, bgImg.naturalWidth, bgImg.naturalHeight, 0, 0, W, H);
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H * 0.55);
+      ctx.clip();
+      ctx.filter = 'blur(3px)';
+      ctx.drawImage(bgImg, 0, 0, bgImg.naturalWidth, bgImg.naturalHeight, 0, 0, W, H);
+      ctx.restore();
     } else {
       ctx.fillStyle = '#87ceeb';
       ctx.fillRect(0, 0, W, H);
@@ -616,7 +626,7 @@
       ctx.rotate(fallRotation);
       ctx.translate(-centerX, -centerY);
     }
-    if (state !== 'GAMEOVER' && (state === 'READY' || direction === -1)) {
+    if (state !== 'GAMEOVER' && direction === -1) {
       ctx.translate(flipCenterX, centerY);
       ctx.scale(-1, 1);
       ctx.translate(-flipCenterX, -centerY);
