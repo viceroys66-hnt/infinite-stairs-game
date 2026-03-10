@@ -54,6 +54,8 @@
   birdImg.src = 'assets/bird.png';
   var bgImg = new Image();
   bgImg.src = 'assets/background.png';
+  var bgBirdImg = new Image();
+  bgBirdImg.src = 'assets/bgBird.png';
 
   function getHighScore() {
     try {
@@ -235,48 +237,42 @@
       ctx.fillRect(0, 0, W, H);
     }
 
-    // 까마귀 – 크기·날개·몸통 비율 다양화
-    for (var bird = 0; bird < 4; bird++) {
-      var btx = ((bird * 180 * S + t * 28) % (W + 100 * S)) - 50 * S;
-      var bty = 50 * S + (bird % 3) * 90 * S + Math.sin(t * 1.2 + bird * 1.5) * 14 * S;
-      var wingPhase = Math.sin(t * (10 + bird) + bird * 2.2) * 0.5;
-      var bodyScale = 0.75 + (bird % 3) * 0.2;
-      var wingSpan = 1 + (bird % 2) * 0.25;
-      var bodyW = 6 * bodyScale;
-      var bodyH = 4.5 * bodyScale * (0.9 + (bird % 2) * 0.2);
-      ctx.save();
-      ctx.translate(btx, bty);
-      ctx.scale(S, S);
-      var crowG = ctx.createRadialGradient(1, 0, 0, 1, 0, bodyW + 2);
-      crowG.addColorStop(0, 'rgba(50,48,55,0.85)');
-      crowG.addColorStop(0.6, 'rgba(30,28,35,0.9)');
-      crowG.addColorStop(1, 'rgba(20,18,25,0.75)');
-      ctx.fillStyle = crowG;
-      ctx.beginPath();
-      ctx.ellipse(1, 0, bodyW, bodyH, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(25,22,30,0.9)';
-      ctx.beginPath();
-      ctx.moveTo(1 + bodyW - 1, 0);
-      ctx.quadraticCurveTo(1 + bodyW + 4, -0.8, 1 + bodyW + 5, 0);
-      ctx.quadraticCurveTo(1 + bodyW + 4, 0.8, 1 + bodyW - 1, 0);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(15,12,20,0.5)';
-      ctx.lineWidth = 1 + bird * 0.15;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      var wingOff = -2 - (bird % 2);
-      ctx.beginPath();
-      ctx.moveTo(wingOff, -wingPhase);
-      ctx.quadraticCurveTo(wingOff - 8 * wingSpan, -3 - wingPhase * 4, wingOff - 3, 0);
-      ctx.quadraticCurveTo(wingOff - 8 * wingSpan, 3 + wingPhase * 4, wingOff, wingPhase);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(wingOff, -wingPhase);
-      ctx.quadraticCurveTo(wingOff - 6 * wingSpan, -2 - wingPhase * 3, wingOff - 2, 0);
-      ctx.quadraticCurveTo(wingOff - 6 * wingSpan, 2 + wingPhase * 3, wingOff, wingPhase);
-      ctx.stroke();
-      ctx.restore();
+    // 배경 새 – 우측→좌측은 원본, 좌측→우측은 좌우 반전 / 날개짓
+    if (bgBirdImg.complete && bgBirdImg.naturalWidth > 0) {
+      var cycle = W + 100 * S;
+      for (var bird = 0; bird < 2; bird++) {
+        var phase = (bird * 180 * S + t * 28) % cycle;
+        var moveRight = bird % 2 === 1;
+        var btx = moveRight ? phase - 50 * S : (W + 60 * S) - phase;
+        var bty = 50 * S + (bird % 3) * 90 * S + Math.sin(t * 1.2 + bird * 1.5) * 14 * S;
+        var flapPhase = Math.sin(t * 24 + bird * 1.6);
+        bty += flapPhase * 6 * S;
+        var bodyScale = 0.7 + (bird % 3) * 0.15;
+        var bw = 48 * S * bodyScale;
+        var bh = 36 * S * bodyScale;
+        ctx.save();
+        ctx.translate(btx, bty);
+        ctx.rotate(flapPhase * 0.07);
+        if (!moveRight) ctx.scale(-1, 1);
+        ctx.drawImage(bgBirdImg, 0, 0, bgBirdImg.naturalWidth, bgBirdImg.naturalHeight, -bw / 2, -bh / 2, bw, bh);
+        ctx.restore();
+      }
+    } else {
+      for (var bird = 0; bird < 2; bird++) {
+        var btx = ((bird * 180 * S + t * 28) % (W + 100 * S)) - 50 * S;
+        var bty = 50 * S + (bird % 3) * 90 * S + Math.sin(t * 1.2 + bird * 1.5) * 14 * S;
+        var bodyScale = 0.75 + (bird % 3) * 0.2;
+        var bodyW = 6 * bodyScale;
+        var bodyH = 4.5 * bodyScale * (0.9 + (bird % 2) * 0.2);
+        ctx.save();
+        ctx.translate(btx, bty);
+        ctx.scale(S, S);
+        ctx.fillStyle = 'rgba(30,28,35,0.9)';
+        ctx.beginPath();
+        ctx.ellipse(1, 0, bodyW, bodyH, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
   }
 
