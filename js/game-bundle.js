@@ -41,6 +41,8 @@
   var fallVelY = 0;
   var fallRotation = 0;
   var GAMEOVER_MESSAGE = '이런~ 젠장';
+  var TIME_LIMIT = 60;
+  var timeRemaining = 60;
   var canvas, ctx;
   var quokkaImg = new Image();
   quokkaImg.src = 'assets/quokka.png';
@@ -50,6 +52,8 @@
   stairImg.src = 'assets/stair.png';
   var birdImg = new Image();
   birdImg.src = 'assets/bird.png';
+  var bgImg = new Image();
+  bgImg.src = 'assets/background.png';
 
   function getHighScore() {
     try {
@@ -125,6 +129,7 @@
     direction = 1;
     jumpProgress = 0;
     fallVelY = 0;
+    timeRemaining = TIME_LIMIT;
     buildRandomZigzag();
     var pos = getStairPosition(0);
     quokkaX = getStairX(pos) + STAIR_WIDTH / 2;
@@ -135,6 +140,7 @@
   function startGame() {
     if (state !== 'READY') return;
     state = 'PLAYING';
+    timeRemaining = TIME_LIMIT;
     updateFacingDirection();
     updateButtonVisibility();
     lastTime = performance.now();
@@ -207,155 +213,60 @@
   var animTime = 0;
 
   function drawBackground() {
-    // 밝은 하늘 그라데이션 (전체적으로 밝게)
-    var skyG = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    skyG.addColorStop(0, '#5a9fd4');
-    skyG.addColorStop(0.3, '#7bb8e8');
-    skyG.addColorStop(0.6, '#9cccf0');
-    skyG.addColorStop(1, '#c5e4fa');
-    ctx.fillStyle = skyG;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
     var t = animTime * 0.4;
-
-    function drawPuffyCloud(centerX, centerY, scale, opacity, isFar) {
-      var blobs = isFar
-        ? [[0, 0, 1, 0.5], [0.5, -0.15, 0.7, 0.4], [0.25, 0.2, 0.55, 0.35], [-0.2, 0.1, 0.45, 0.38]]
-        : [[0, 0, 1, 0.55], [0.55, -0.2, 0.75, 0.45], [0.3, 0.25, 0.6, 0.4], [-0.25, 0.05, 0.5, 0.42], [0.15, 0.35, 0.45, 0.35]];
-      var b, bx, by, rw, rh, grad, S = GAME_SCALE;
-      if (isFar) {
-        for (b = 0; b < blobs.length; b++) {
-          bx = centerX + blobs[b][0] * scale * 55 * S;
-          by = centerY + blobs[b][1] * scale * 45 * S;
-          rw = blobs[b][2] * scale * 48 * S;
-          rh = blobs[b][3] * scale * 28 * S;
-          ctx.fillStyle = 'rgba(255,255,255,' + (opacity * 0.5) + ')';
-          ctx.beginPath();
-          ctx.ellipse(bx, by, rw, rh, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        return;
-      }
-      for (b = 0; b < blobs.length; b++) {
-        bx = centerX + blobs[b][0] * scale * 55 * S;
-        by = centerY + blobs[b][1] * scale * 45 * S;
-        rw = blobs[b][2] * scale * 48 * S;
-        rh = blobs[b][3] * scale * 28 * S;
-        grad = ctx.createRadialGradient(bx - rw * 0.4, by - rh * 0.45, 0, bx + rw * 0.25, by + rh * 0.3, rw * 1.2);
-        grad.addColorStop(0, 'rgba(255,255,255,' + (opacity * 0.98) + ')');
-        grad.addColorStop(0.35, 'rgba(255,255,255,' + (opacity * 0.9) + ')');
-        grad.addColorStop(0.6, 'rgba(248,252,255,' + (opacity * 0.78) + ')');
-        grad.addColorStop(0.82, 'rgba(235,248,255,' + (opacity * 0.58) + ')');
-        grad.addColorStop(1, 'rgba(218,238,250,' + (opacity * 0.38) + ')');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(bx, by, rw, rh, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
     var S = GAME_SCALE;
-    // 먼 구름 (뭉게뭉게, 흐릿한 레이어)
-    for (var i = 0; i < 5; i++) {
-      var fx = ((i * 115 * S + t * 5) % (CANVAS_WIDTH + 200 * S)) - 100 * S;
-      var fy = 60 * S + (i % 3) * 95 * S + Math.sin(t + i * 0.7) * 15 * S;
-      drawPuffyCloud(fx, fy, 0.85 + (i % 3) * 0.15, 0.48, true);
+    var W = CANVAS_WIDTH;
+    var H = CANVAS_HEIGHT;
+
+    if (bgImg.complete && bgImg.naturalWidth > 0) {
+      ctx.drawImage(bgImg, 0, 0, bgImg.naturalWidth, bgImg.naturalHeight, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = '#87ceeb';
+      ctx.fillRect(0, 0, W, H);
     }
 
-    // 가까운 구름 (뭉게뭉게 + 3D 그라데이션)
-    for (var j = 0; j < 6; j++) {
-      var cx = ((j * 88 * S + t * 9) % (CANVAS_WIDTH + 160 * S)) - 80 * S;
-      var cy = 130 * S + (j % 3) * 90 * S + Math.sin(t * 1.1 + j * 1.3) * 20 * S;
-      drawPuffyCloud(cx, cy, 1 + (j % 2) * 0.2, 0.9, false);
-    }
-
-    // 하늘만 (올라가는 느낌 – 바닥/땅 없음)
-    var horizonG = ctx.createLinearGradient(0, CANVAS_HEIGHT * 0.4, 0, CANVAS_HEIGHT);
-    horizonG.addColorStop(0, 'rgba(255,255,255,0)');
-    horizonG.addColorStop(0.6, 'rgba(255,252,248,0.12)');
-    horizonG.addColorStop(1, 'rgba(230,245,255,0.25)');
-    ctx.fillStyle = horizonG;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // 참새 (날개짓하며 날아다니는 작은 새)
-    for (var bird = 0; bird < 3; bird++) {
-      var btx = ((bird * 180 * S + t * 45) % (CANVAS_WIDTH + 100 * S)) - 50 * S;
-      var bty = 100 * S + (bird % 3) * 120 * S + Math.sin(t * 2 + bird) * 25 * S;
-      var wingPhase = Math.sin(t * 14 + bird * 2.1);
-      var wingY = wingPhase * 9;
+    // 까마귀 – 크기·날개·몸통 비율 다양화
+    for (var bird = 0; bird < 4; bird++) {
+      var btx = ((bird * 180 * S + t * 28) % (W + 100 * S)) - 50 * S;
+      var bty = 50 * S + (bird % 3) * 90 * S + Math.sin(t * 1.2 + bird * 1.5) * 14 * S;
+      var wingPhase = Math.sin(t * (10 + bird) + bird * 2.2) * 0.5;
+      var bodyScale = 0.75 + (bird % 3) * 0.2;
+      var wingSpan = 1 + (bird % 2) * 0.25;
+      var bodyW = 6 * bodyScale;
+      var bodyH = 4.5 * bodyScale * (0.9 + (bird % 2) * 0.2);
       ctx.save();
       ctx.translate(btx, bty);
       ctx.scale(S, S);
-      if (birdImg.complete && birdImg.naturalWidth > 0) {
-        var flapScale = 1 + 0.14 * wingPhase;
-        var bw = 28;
-        var bh = 18;
-        ctx.scale(1, flapScale);
-        ctx.drawImage(birdImg, -bw / 2, -bh / 2, bw, bh);
-      } else {
-        var bodyG = ctx.createRadialGradient(-2, -1, 0, 0, 0, 12);
-        bodyG.addColorStop(0, '#8b7355');
-        bodyG.addColorStop(0.6, '#6b5344');
-        bodyG.addColorStop(1, '#4a3c32');
-        ctx.fillStyle = bodyG;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 11, 7, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = '#2c2c2c';
-        ctx.beginPath();
-        ctx.ellipse(6, 0, 2.5, 2.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#c45c38';
-        ctx.beginPath();
-        ctx.moveTo(9, 0);
-        ctx.lineTo(15, -1.5);
-        ctx.lineTo(15, 1.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = 'rgba(90,70,55,0.9)';
-        ctx.beginPath();
-        ctx.moveTo(-5, 0);
-        ctx.lineTo(-15, -4 - wingY);
-        ctx.lineTo(-7, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(-5, 0);
-        ctx.lineTo(-15, 4 + wingY);
-        ctx.lineTo(-7, 0);
-        ctx.closePath();
-        ctx.fill();
-      }
+      var crowG = ctx.createRadialGradient(1, 0, 0, 1, 0, bodyW + 2);
+      crowG.addColorStop(0, 'rgba(50,48,55,0.85)');
+      crowG.addColorStop(0.6, 'rgba(30,28,35,0.9)');
+      crowG.addColorStop(1, 'rgba(20,18,25,0.75)');
+      ctx.fillStyle = crowG;
+      ctx.beginPath();
+      ctx.ellipse(1, 0, bodyW, bodyH, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(25,22,30,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(1 + bodyW - 1, 0);
+      ctx.quadraticCurveTo(1 + bodyW + 4, -0.8, 1 + bodyW + 5, 0);
+      ctx.quadraticCurveTo(1 + bodyW + 4, 0.8, 1 + bodyW - 1, 0);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(15,12,20,0.5)';
+      ctx.lineWidth = 1 + bird * 0.15;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      var wingOff = -2 - (bird % 2);
+      ctx.beginPath();
+      ctx.moveTo(wingOff, -wingPhase);
+      ctx.quadraticCurveTo(wingOff - 8 * wingSpan, -3 - wingPhase * 4, wingOff - 3, 0);
+      ctx.quadraticCurveTo(wingOff - 8 * wingSpan, 3 + wingPhase * 4, wingOff, wingPhase);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(wingOff, -wingPhase);
+      ctx.quadraticCurveTo(wingOff - 6 * wingSpan, -2 - wingPhase * 3, wingOff - 2, 0);
+      ctx.quadraticCurveTo(wingOff - 6 * wingSpan, 2 + wingPhase * 3, wingOff, wingPhase);
+      ctx.stroke();
       ctx.restore();
-    }
-
-    // 풍선 (날아다니는 풍선)
-    for (var bal = 0; bal < 4; bal++) {
-      var bax = ((bal * 140 * S + t * 18) % (CANVAS_WIDTH + 120 * S)) - 60 * S;
-      var bay = 150 * S + (bal % 2) * 130 * S + Math.sin(t * 1.3 + bal * 2) * 22 * S;
-      var balColors = ['#e74c3c', '#f1c40f', '#3498db', '#9b59b6'];
-      var balR = 22 * S;
-      var balG = ctx.createRadialGradient(bax - 3, bay - 3, 0, bax, bay, balR);
-      balG.addColorStop(0, 'rgba(255,255,255,0.45)');
-      balG.addColorStop(0.5, balColors[bal % 4]);
-      balG.addColorStop(1, balColors[bal % 4]);
-      ctx.fillStyle = balG;
-      ctx.beginPath();
-      ctx.ellipse(bax, bay, 16 * S, 20 * S, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bax - 3, bay + 20 * S);
-      ctx.lineTo(bax, bay + 32 * S);
-      ctx.lineTo(bax + 3, bay + 20 * S);
-      ctx.fillStyle = balColors[bal % 4];
-      ctx.fill();
-      ctx.stroke();
     }
   }
 
@@ -418,42 +329,63 @@
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    function drawTree(tx, baseY, scale) {
+    function drawTree(tx, baseY, scale, variant) {
+      variant = variant || 0;
       var s = GAME_SCALE * scale;
-      var trunkH = 42 * s;
-      var trunkW = 8 * s;
-      var foliageR = 28 * s;
+      var trunkH = (16 + (variant % 2) * 4) * s;
+      var trunkW = (5 + variant % 2) * s;
+      var coneH = (48 + (variant % 3) * 8) * s;
+      var coneW = (28 + (variant % 2) * 8) * s;
+      if (variant === 2) { coneH = coneH * 1.1; coneW = coneW * 0.85; }
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,0.2)';
       ctx.shadowBlur = 4;
       ctx.shadowOffsetY = 2;
       ctx.fillStyle = '#5c4033';
       ctx.fillRect(tx - trunkW / 2, baseY - trunkH, trunkW, trunkH);
-      var foliageG = ctx.createRadialGradient(tx - foliageR * 0.3, baseY - trunkH - foliageR * 0.4, 0, tx, baseY - trunkH, foliageR);
-      foliageG.addColorStop(0, '#6b9e5c');
-      foliageG.addColorStop(0.5, '#4a7c3d');
-      foliageG.addColorStop(1, '#3d6b32');
-      ctx.fillStyle = foliageG;
+      var tipY = baseY - trunkH - coneH;
+      var leftX = tx - coneW / 2;
+      var rightX = tx + coneW / 2;
+      var pineG = ctx.createLinearGradient(tx - coneW / 2, tipY, tx + coneW / 2, baseY - trunkH);
+      pineG.addColorStop(0, '#3d6b32');
+      pineG.addColorStop(0.3, '#4a7c3d');
+      pineG.addColorStop(0.6, '#5a9050');
+      pineG.addColorStop(0.85, '#4a7c3d');
+      pineG.addColorStop(1, '#3d6b32');
+      ctx.fillStyle = pineG;
       ctx.beginPath();
-      ctx.ellipse(tx, baseY - trunkH - foliageR * 0.3, foliageR, foliageR * 1.1, 0, 0, Math.PI * 2);
+      ctx.moveTo(tx, tipY);
+      ctx.lineTo(leftX, baseY - trunkH);
+      ctx.lineTo(rightX, baseY - trunkH);
+      ctx.closePath();
       ctx.fill();
+      if (variant === 1) {
+        ctx.beginPath();
+        ctx.moveTo(tx, tipY + coneH * 0.5);
+        ctx.lineTo(leftX + coneW * 0.2, baseY - trunkH);
+        ctx.lineTo(rightX - coneW * 0.2, baseY - trunkH);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(70,110,85,0.6)';
+        ctx.fill();
+      }
       ctx.beginPath();
-      ctx.ellipse(tx - foliageR * 0.4, baseY - trunkH - foliageR * 0.6, foliageR * 0.7, foliageR * 0.85, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(tx + foliageR * 0.35, baseY - trunkH - foliageR * 0.5, foliageR * 0.75, foliageR * 0.9, 0, 0, Math.PI * 2);
+      ctx.moveTo(tx, tipY + coneH * 0.35);
+      ctx.lineTo(leftX + coneW * 0.15, baseY - trunkH);
+      ctx.lineTo(rightX - coneW * 0.15, baseY - trunkH);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(90,130,95,0.5)';
       ctx.fill();
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.restore();
     }
     var treeBaseY = gTop + 8 * GAME_SCALE + Math.floor(animTime * 0.5) % 4;
-    drawTree(28 * GAME_SCALE, treeBaseY, 1);
-    drawTree(62 * GAME_SCALE, treeBaseY + 12 * GAME_SCALE, 0.85);
-    drawTree(95 * GAME_SCALE, treeBaseY - 5 * GAME_SCALE, 1.1);
-    drawTree(CANVAS_WIDTH - 28 * GAME_SCALE, treeBaseY + 5 * GAME_SCALE, 0.9);
-    drawTree(CANVAS_WIDTH - 65 * GAME_SCALE, treeBaseY - 8 * GAME_SCALE, 1.05);
-    drawTree(CANVAS_WIDTH - 98 * GAME_SCALE, treeBaseY + 8 * GAME_SCALE, 0.8);
+    drawTree(28 * GAME_SCALE, treeBaseY, 1, 0);
+    drawTree(62 * GAME_SCALE, treeBaseY + 12 * GAME_SCALE, 0.85, 1);
+    drawTree(95 * GAME_SCALE, treeBaseY - 5 * GAME_SCALE, 1.1, 2);
+    drawTree(CANVAS_WIDTH - 28 * GAME_SCALE, treeBaseY + 5 * GAME_SCALE, 0.9, 0);
+    drawTree(CANVAS_WIDTH - 65 * GAME_SCALE, treeBaseY - 8 * GAME_SCALE, 1.05, 1);
+    drawTree(CANVAS_WIDTH - 98 * GAME_SCALE, treeBaseY + 8 * GAME_SCALE, 0.8, 2);
   }
 
   var STUMP_SCALE = 1.3;
@@ -758,6 +690,11 @@
     ctx.fillText(floor + ' 층', 12 * S, barH / 2 + 4);
     ctx.textAlign = 'right';
     ctx.fillText('최고: ' + getHighScore() + ' 층', CANVAS_WIDTH - 12 * S, barH / 2 + 4);
+    if (state === 'PLAYING') {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = timeRemaining <= 10 ? '#ff6b6b' : '#fff';
+      ctx.fillText('제한시간 ' + Math.ceil(timeRemaining) + '초', CANVAS_WIDTH / 2, barH / 2 + 4);
+    }
   }
 
   function drawReadyOverlay() {
@@ -771,6 +708,10 @@
     ctx.font = Math.round(16 * S) + 'px sans-serif';
     ctx.fillText('귀여운 쿼카와 함께!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20 * S);
     ctx.fillText('아래 [게임 시작하기] 버튼을 눌러 시작', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20 * S);
+    ctx.font = Math.round(13 * S) + 'px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText('A버튼: 방향전환', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 55 * S);
+    ctx.fillText('Space버튼: 오르기', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 78 * S);
   }
 
   function drawGameOverOverlay() {
@@ -816,6 +757,13 @@
     lastTime = timestamp;
     animTime += dt;
     if (jumpProgress > 0) jumpProgress -= dt;
+    if (state === 'PLAYING') {
+      timeRemaining -= dt;
+      if (timeRemaining <= 0) {
+        timeRemaining = 0;
+        gameOver();
+      }
+    }
     if (state === 'GAMEOVER') {
       fallVelY += 920 * dt;
       fallY += fallVelY * dt;

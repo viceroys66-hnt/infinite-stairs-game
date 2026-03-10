@@ -101,6 +101,14 @@ body {
   pointer-events: auto;
 }
 
+.game-overlay-buttons .btn-start {
+  margin-top: 10cm;
+}
+
+.game-overlay-buttons .btn-restart {
+  margin-top: 5cm;
+}
+
 .game-bottom-buttons {
   position: absolute;
   left: 0;
